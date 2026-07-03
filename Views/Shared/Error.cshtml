@@ -1,0 +1,21 @@
+﻿@model ErrorViewModel
+@{
+    ViewData["Title"] = Model.Title;
+    ViewData["BodyClass"] = "portfolio-shell";
+}
+
+<section class="resume-page error-page">
+    <div class="error-panel">
+        <p class="eyebrow">@Model.StatusCode</p>
+        <h1>@Model.Title</h1>
+        <p class="lead">@Model.Message</p>
+        <a class="error-home-link" href="/#about">Back to portfolio</a>
+
+        @if (Model.ShowRequestId)
+        {
+            <p class="request-id">
+                Request ID: <code>@Model.RequestId</code>
+            </p>
+        }
+    </div>
+</section>

@@ -1,0 +1,23 @@
+@model LoginViewModel
+@{
+    ViewData["Title"] = "Admin Login";
+    ViewData["BodyClass"] = "admin-body";
+}
+
+<section class="login-panel">
+    <h1 data-i18n="admin.panel">Admin Panel</h1>
+    <p data-i18n="login.description">Sign in to manage your portfolio content.</p>
+    <form asp-action="Login" method="post" class="admin-form">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+        <label asp-for="Password" data-i18n="login.password"></label>
+        <input asp-for="Password" type="password" />
+        <span asp-validation-for="Password" class="text-danger"></span>
+        <button type="submit" data-i18n="login.signIn">Sign in</button>
+    </form>
+    <a class="back-link" href="/#about" data-i18n="login.back">Back to portfolio</a>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

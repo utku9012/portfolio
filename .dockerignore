@@ -1,0 +1,16 @@
+bin/
+obj/
+.git/
+.vs/
+.vscode/
+
+wwwroot/uploads/*
+!wwwroot/uploads/.gitkeep
+
+*.user
+*.suo
+*.log
+*.tmp
+*.temp
+.env
+*.Development.local.json

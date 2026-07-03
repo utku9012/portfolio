@@ -1,0 +1,284 @@
+@model PortfolioViewModel
+@using System.Text.RegularExpressions
+@{
+    ViewData["Title"] = $"{Model.Profile.FirstName} {Model.Profile.LastName}";
+    ViewData["BodyClass"] = "portfolio-shell";
+    ViewData["MetaDescription"] = string.IsNullOrWhiteSpace(Model.Profile.Summary)
+        ? "Personal portfolio website with experience, projects, education, skills, and certifications."
+        : Model.Profile.Summary;
+
+    static IReadOnlyList<string> DescriptionItems(string? description)
+    {
+        if (string.IsNullOrWhiteSpace(description))
+        {
+            return [];
+        }
+
+        return Regex
+            .Split(description.Trim(), @"(?:\r?\n)+|\s+-")
+            .Select(item => item.Trim().TrimStart('-').Trim())
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .ToList();
+    }
+
+    static string Localized(string? english, string? turkish)
+    {
+        return string.IsNullOrWhiteSpace(turkish) ? english ?? string.Empty : turkish;
+    }
+
+    static string DateRange(string? startDate, string? endDate)
+    {
+        if (string.IsNullOrWhiteSpace(startDate))
+        {
+            return endDate ?? string.Empty;
+        }
+
+        if (string.IsNullOrWhiteSpace(endDate))
+        {
+            return startDate;
+        }
+
+        return $"{startDate} - {endDate}";
+    }
+}
+
+<aside class="side-nav">
+    <a class="identity" href="#about">
+        @if (!string.IsNullOrWhiteSpace(Model.Profile.PhotoUrl))
+        {
+            <img class="avatar" src="@Model.Profile.PhotoUrl" alt="@Model.Profile.FirstName @Model.Profile.LastName" />
+        }
+        else
+        {
+            <span class="avatar">@Model.Profile.FirstName.Take(1).FirstOrDefault()@Model.Profile.LastName.Take(1).FirstOrDefault()</span>
+        }
+    </a>
+    <nav aria-label="Portfolio sections">
+        <a href="#about" data-i18n="nav.about">About</a>
+        <a href="#experience" data-i18n="nav.experiences">Experiences</a>
+        <a href="#projects" data-i18n="nav.projects">Projects</a>
+        <a href="#education" data-i18n="nav.education">Education</a>
+        <a href="#skills" data-i18n="nav.skills">Skills</a>
+        <a href="#certifications" data-i18n="nav.certifications">Certifications</a>
+    </nav>
+</aside>
+
+<a class="settings-link" asp-controller="Admin" asp-action="Index" aria-label="Open admin settings">
+    <i class="fas fa-cog" aria-hidden="true"></i>
+</a>
+
+<div class="resume-page">
+    <section id="about" class="resume-section hero-section">
+        <p class="eyebrow">
+            <span data-localized="en">@Model.Profile.Title</span>
+            <span data-localized="tr">@Localized(Model.Profile.Title, Model.Profile.TitleTr)</span>
+        </p>
+        <h1>@Model.Profile.FirstName <span>@Model.Profile.LastName</span></h1>
+        <p class="contact-line">
+            @Model.Profile.Location
+            @if (!string.IsNullOrWhiteSpace(Model.Profile.Email))
+            {
+                <text> - <a href="mailto:@Model.Profile.Email">@Model.Profile.Email</a></text>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.Profile.Phone))
+            {
+                <text> - @Model.Profile.Phone</text>
+            }
+        </p>
+        <p class="lead">
+            <span data-localized="en">@Model.Profile.Summary</span>
+            <span data-localized="tr">@Localized(Model.Profile.Summary, Model.Profile.SummaryTr)</span>
+        </p>
+        <div class="social-links">
+            @if (!string.IsNullOrWhiteSpace(Model.Profile.LinkedInUrl))
+            {
+                <a href="@Model.Profile.LinkedInUrl" target="_blank" rel="noreferrer" aria-label="LinkedIn profile">
+                    <i class="fab fa-linkedin-in" aria-hidden="true"></i>
+                </a>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.Profile.GitHubUrl))
+            {
+                <a href="@Model.Profile.GitHubUrl" target="_blank" rel="noreferrer" aria-label="GitHub profile">
+                    <i class="fab fa-github" aria-hidden="true"></i>
+                </a>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.Profile.CvUrl))
+            {
+                <a href="@Model.Profile.CvUrl" target="_blank" rel="noreferrer" download data-i18n-aria-label="link.downloadCv" data-i18n-title="link.downloadCv">
+                    <i class="fas fa-file-download" aria-hidden="true"></i>
+                </a>
+            }
+        </div>
+    </section>
+
+    <section id="experience" class="resume-section">
+        <h2 data-i18n="section.experiences">Experiences</h2>
+        @foreach (var experience in Model.Experiences)
+        {
+            var descriptionItems = DescriptionItems(experience.Description);
+            var descriptionItemsTr = DescriptionItems(Localized(experience.Description, experience.DescriptionTr));
+            var isMaterialList = descriptionItems.Count > 1 || (experience.Description?.TrimStart().StartsWith("-") ?? false);
+            var isMaterialListTr = descriptionItemsTr.Count > 1 || (Localized(experience.Description, experience.DescriptionTr).TrimStart().StartsWith("-"));
+
+            <article class="timeline-item">
+                <div>
+                    <h3>
+                        <span data-localized="en">@experience.Role</span>
+                        <span data-localized="tr">@Localized(experience.Role, experience.RoleTr)</span>
+                    </h3>
+                    <p class="subheading">
+                        <span data-localized="en">@experience.Company @(!string.IsNullOrWhiteSpace(experience.Location) ? $" - {experience.Location}" : string.Empty)</span>
+                        <span data-localized="tr">@experience.Company @(!string.IsNullOrWhiteSpace(Localized(experience.Location, experience.LocationTr)) ? $" - {Localized(experience.Location, experience.LocationTr)}" : string.Empty)</span>
+                    </p>
+                    <div data-localized="en">
+                        @if (isMaterialList)
+                        {
+                            <ul class="description-list">
+                                @foreach (var item in descriptionItems)
+                                {
+                                    <li>@item</li>
+                                }
+                            </ul>
+                        }
+                        else
+                        {
+                            <p class="formatted-text">@experience.Description</p>
+                        }
+                    </div>
+                    <div data-localized="tr">
+                        @if (isMaterialListTr)
+                        {
+                            <ul class="description-list">
+                                @foreach (var item in descriptionItemsTr)
+                                {
+                                    <li>@item</li>
+                                }
+                            </ul>
+                        }
+                        else
+                        {
+                            <p class="formatted-text">@Localized(experience.Description, experience.DescriptionTr)</p>
+                        }
+                    </div>
+                </div>
+                <span class="date-range">
+                    <span data-localized="en">@DateRange(experience.StartDate, experience.EndDate)</span>
+                    <span data-localized="tr">@DateRange(Localized(experience.StartDate, experience.StartDateTr), Localized(experience.EndDate, experience.EndDateTr))</span>
+                </span>
+            </article>
+        }
+    </section>
+
+    <section id="projects" class="resume-section">
+        <h2 data-i18n="section.projects">Projects</h2>
+        <div class="project-grid">
+            @foreach (var project in Model.Projects)
+            {
+                <article class="project-card">
+                    @if (!string.IsNullOrWhiteSpace(project.ImageUrl))
+                    {
+                        <img class="project-image" src="@project.ImageUrl" alt="@Localized(project.Name, project.NameTr)" />
+                    }
+                    <h3>
+                        <span data-localized="en">@project.Name</span>
+                        <span data-localized="tr">@Localized(project.Name, project.NameTr)</span>
+                    </h3>
+                    <p>
+                        <span data-localized="en">@project.Summary</span>
+                        <span data-localized="tr">@Localized(project.Summary, project.SummaryTr)</span>
+                    </p>
+                    <p class="tech">
+                        <span data-localized="en">@project.Technologies</span>
+                        <span data-localized="tr">@Localized(project.Technologies, project.TechnologiesTr)</span>
+                    </p>
+                    @if (!string.IsNullOrWhiteSpace(project.Url))
+                    {
+                        <a href="@project.Url" target="_blank" rel="noreferrer" data-i18n="link.viewProject">View project</a>
+                    }
+                </article>
+            }
+        </div>
+    </section>
+
+    <section id="education" class="resume-section">
+        <h2 data-i18n="section.education">Education</h2>
+        @foreach (var education in Model.Educations)
+        {
+            <article class="timeline-item">
+                <div>
+                    <h3>
+                        <span data-localized="en">@education.School</span>
+                        <span data-localized="tr">@Localized(education.School, education.SchoolTr)</span>
+                    </h3>
+                    <p class="subheading">
+                        <span data-localized="en">@education.Degree</span>
+                        <span data-localized="tr">@Localized(education.Degree, education.DegreeTr)</span>
+                    </p>
+                    <p class="formatted-text">
+                        <span data-localized="en">@education.Description</span>
+                        <span data-localized="tr">@Localized(education.Description, education.DescriptionTr)</span>
+                    </p>
+                </div>
+                <span class="date-range">
+                    <span data-localized="en">@DateRange(education.StartDate, education.EndDate)</span>
+                    <span data-localized="tr">@DateRange(Localized(education.StartDate, education.StartDateTr), Localized(education.EndDate, education.EndDateTr))</span>
+                </span>
+            </article>
+        }
+    </section>
+
+    <section id="skills" class="resume-section">
+        <h2 data-i18n="section.skills">Skills</h2>
+        <div class="skill-cloud">
+            @foreach (var skill in Model.Skills)
+            {
+                <span>
+                    <span data-localized="en">@skill.Name</span>
+                    <span data-localized="tr">@Localized(skill.Name, skill.NameTr)</span>
+                </span>
+            }
+        </div>
+    </section>
+
+    <section id="certifications" class="resume-section">
+        <h2 data-i18n="section.certifications">Certifications</h2>
+        <div class="certification-list">
+            @foreach (var certification in Model.Certifications)
+            {
+                <article class="certification-item">
+                    <div>
+                        <h3>
+                            <span data-localized="en">@certification.Name</span>
+                            <span data-localized="tr">@Localized(certification.Name, certification.NameTr)</span>
+                        </h3>
+                        @if (!string.IsNullOrWhiteSpace(certification.Issuer))
+                        {
+                            <p class="subheading">
+                                <span data-localized="en">@certification.Issuer</span>
+                                <span data-localized="tr">@Localized(certification.Issuer, certification.IssuerTr)</span>
+                            </p>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(certification.Description))
+                        {
+                            <p class="formatted-text">
+                                <span data-localized="en">@certification.Description</span>
+                                <span data-localized="tr">@Localized(certification.Description, certification.DescriptionTr)</span>
+                            </p>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(certification.CredentialUrl))
+                        {
+                            <a href="@certification.CredentialUrl" target="_blank" rel="noreferrer" data-i18n="link.viewCredential">View credential</a>
+                        }
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(certification.IssueDate))
+                    {
+                        <span class="date-range">
+                            <span data-localized="en">@certification.IssueDate</span>
+                            <span data-localized="tr">@Localized(certification.IssueDate, certification.IssueDateTr)</span>
+                        </span>
+                    }
+                </article>
+            }
+        </div>
+    </section>
+</div>

@@ -1,0 +1,270 @@
+@model PortfolioViewModel
+@{
+    ViewData["Title"] = "Admin";
+    ViewData["BodyClass"] = "admin-body";
+}
+
+<header class="admin-header">
+    <div>
+        <p class="eyebrow" data-i18n="admin.cms">Portfolio CMS</p>
+        <h1 data-i18n="admin.panel">Admin Panel</h1>
+    </div>
+    <form asp-action="Logout" method="post">
+        @Html.AntiForgeryToken()
+        <button class="ghost-button" type="submit" data-i18n="admin.logout">Logout</button>
+    </form>
+</header>
+
+@if (TempData["AdminMessage"] is string adminMessage)
+{
+    <div class="admin-alert success">@adminMessage</div>
+}
+
+@if (TempData["AdminError"] is string adminError)
+{
+    <div class="admin-alert error">@adminError</div>
+}
+
+<div class="admin-grid">
+    <section class="admin-section wide">
+        <h2 data-i18n="admin.about">About</h2>
+        <form asp-action="SaveProfile" method="post" class="admin-form" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="Profile.Id" />
+            <div class="form-row">
+                <label><span data-i18n="field.firstName">First name</span><input asp-for="Profile.FirstName" /></label>
+                <label><span data-i18n="field.lastName">Last name</span><input asp-for="Profile.LastName" /></label>
+                <label><span data-i18n="field.title">Title</span><input asp-for="Profile.Title" /></label>
+            </div>
+            <label><span data-i18n="field.titleTr">Title TR</span><input asp-for="Profile.TitleTr" /></label>
+            <div class="form-row">
+                <label><span data-i18n="field.email">Email</span><input asp-for="Profile.Email" /></label>
+                <label><span data-i18n="field.phone">Phone</span><input asp-for="Profile.Phone" /></label>
+                <label><span data-i18n="field.location">Location</span><input asp-for="Profile.Location" /></label>
+            </div>
+            <label><span data-i18n="field.summary">Summary</span><textarea asp-for="Profile.Summary"></textarea></label>
+            <label><span data-i18n="field.summaryTr">Summary TR</span><textarea asp-for="Profile.SummaryTr"></textarea></label>
+            <div class="form-row">
+                <label><span data-i18n="field.linkedin">LinkedIn</span><input asp-for="Profile.LinkedInUrl" /></label>
+                <label><span data-i18n="field.github">GitHub</span><input asp-for="Profile.GitHubUrl" /></label>
+                <label><span data-i18n="field.photoUrl">Photo URL</span><input asp-for="Profile.PhotoUrl" placeholder="/images/profile.jpg" /></label>
+            </div>
+            <div class="form-row">
+                <label><span data-i18n="field.profileImageUpload">Profile image upload</span><input type="file" name="profileImage" accept="image/*" /></label>
+                <label><span data-i18n="field.cvUrl">CV URL</span><input asp-for="Profile.CvUrl" placeholder="/uploads/cv/your-cv.pdf" /></label>
+                <label><span data-i18n="field.cvUpload">CV upload</span><input type="file" name="cvFile" accept=".pdf,.doc,.docx" /></label>
+            </div>
+            <button type="submit" data-i18n="admin.saveAbout">Save about</button>
+        </form>
+    </section>
+
+    <section class="admin-section">
+        <h2 data-i18n="section.experiences">Experiences</h2>
+        @foreach (var item in Model.Experiences)
+        {
+            <form asp-action="UpdateExperience" method="post" class="admin-form editable-item">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="Id" value="@item.Id" />
+                <input name="Role" value="@item.Role" placeholder="Role" />
+                <input name="RoleTr" value="@item.RoleTr" placeholder="Role TR" />
+                <input name="Company" value="@item.Company" placeholder="Company" />
+                <input name="Location" value="@item.Location" placeholder="Location" />
+                <input name="LocationTr" value="@item.LocationTr" placeholder="Location TR" />
+                <div class="form-row">
+                    <input name="StartDate" value="@item.StartDate" placeholder="Start" />
+                    <input name="StartDateTr" value="@item.StartDateTr" placeholder="Start TR" />
+                    <input name="EndDate" value="@item.EndDate" placeholder="End" />
+                    <input name="EndDateTr" value="@item.EndDateTr" placeholder="End TR" />
+                </div>
+                <textarea name="Description" placeholder="Description">@item.Description</textarea>
+                <textarea name="DescriptionTr" placeholder="Description TR">@item.DescriptionTr</textarea>
+                <div class="item-actions">
+                    <button type="submit" data-i18n="button.save">Save</button>
+                    <button class="delete-button" type="submit" formaction="@Url.Action("DeleteExperience")" name="id" value="@item.Id" data-i18n="button.delete">Delete</button>
+                </div>
+            </form>
+        }
+        <form asp-action="AddExperience" method="post" class="admin-form">
+            @Html.AntiForgeryToken()
+            <input name="Role" placeholder="Role" />
+            <input name="RoleTr" placeholder="Role TR" />
+            <input name="Company" placeholder="Company" />
+            <input name="Location" placeholder="Location" />
+            <input name="LocationTr" placeholder="Location TR" />
+            <div class="form-row">
+                <input name="StartDate" placeholder="Start" />
+                <input name="StartDateTr" placeholder="Start TR" />
+                <input name="EndDate" placeholder="End" />
+                <input name="EndDateTr" placeholder="End TR" />
+            </div>
+            <textarea name="Description" placeholder="Description"></textarea>
+            <textarea name="DescriptionTr" placeholder="Description TR"></textarea>
+            <button type="submit" data-i18n="admin.addExperience">Add experience</button>
+        </form>
+    </section>
+
+    <section class="admin-section">
+        <h2 data-i18n="section.projects">Projects</h2>
+        <div class="drag-list" data-project-reorder-url="@Url.Action("ReorderProjects")">
+            @foreach (var item in Model.Projects)
+            {
+                <div class="project-sort-item" draggable="true" data-project-id="@item.Id">
+                    <div class="drag-handle" aria-label="Drag project to reorder" title="Drag to reorder" data-i18n-title="admin.dragReorder" data-i18n-aria-label="admin.dragReorder">
+                        <i class="fas fa-grip-lines" aria-hidden="true"></i>
+                    </div>
+                    <form asp-action="UpdateProject" method="post" class="admin-form editable-item" enctype="multipart/form-data">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="Id" value="@item.Id" />
+                        <input type="hidden" name="DisplayOrder" value="@item.DisplayOrder" />
+                        <div class="form-row">
+                            <input name="Name" value="@item.Name" placeholder="Project name" />
+                            <input name="NameTr" value="@item.NameTr" placeholder="Project name TR" />
+                            <input name="Technologies" value="@item.Technologies" placeholder="Technologies" />
+                        </div>
+                        <input name="TechnologiesTr" value="@item.TechnologiesTr" placeholder="Technologies TR" />
+                        <input name="Url" value="@item.Url" placeholder="URL" />
+                        <label><span data-i18n="field.projectImageUrl">Project image URL</span><input name="ImageUrl" value="@item.ImageUrl" placeholder="/uploads/project-images/project.jpg" /></label>
+                        <label><span data-i18n="field.projectImageUpload">Project image upload</span><input type="file" name="projectImage" accept="image/*" /></label>
+                        <textarea name="Summary" placeholder="Summary">@item.Summary</textarea>
+                        <textarea name="SummaryTr" placeholder="Summary TR">@item.SummaryTr</textarea>
+                        <div class="item-actions">
+                            <button type="submit" data-i18n="button.save">Save</button>
+                            <button class="delete-button" type="submit" formaction="@Url.Action("DeleteProject")" name="id" value="@item.Id" data-i18n="button.delete">Delete</button>
+                        </div>
+                    </form>
+                </div>
+            }
+        </div>
+        <p class="drag-status" data-project-drag-status aria-live="polite"></p>
+        <form asp-action="AddProject" method="post" class="admin-form" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+            <div class="form-row">
+                <input name="Name" placeholder="Project name" />
+                <input name="NameTr" placeholder="Project name TR" />
+                <input name="Technologies" placeholder="Technologies" />
+            </div>
+            <input name="TechnologiesTr" placeholder="Technologies TR" />
+            <input name="Url" placeholder="URL" />
+            <label><span data-i18n="field.projectImageUrl">Project image URL</span><input name="ImageUrl" placeholder="/uploads/project-images/project.jpg" /></label>
+            <label><span data-i18n="field.projectImageUpload">Project image upload</span><input type="file" name="projectImage" accept="image/*" /></label>
+            <textarea name="Summary" placeholder="Summary"></textarea>
+            <textarea name="SummaryTr" placeholder="Summary TR"></textarea>
+            <button type="submit" data-i18n="admin.addProject">Add project</button>
+        </form>
+    </section>
+
+    <section class="admin-section">
+        <h2 data-i18n="section.education">Education</h2>
+        @foreach (var item in Model.Educations)
+        {
+            <form asp-action="UpdateEducation" method="post" class="admin-form editable-item">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="Id" value="@item.Id" />
+                <input name="School" value="@item.School" placeholder="School" />
+                <input name="SchoolTr" value="@item.SchoolTr" placeholder="School TR" />
+                <input name="Degree" value="@item.Degree" placeholder="Degree" />
+                <input name="DegreeTr" value="@item.DegreeTr" placeholder="Degree TR" />
+                <div class="form-row">
+                    <input name="StartDate" value="@item.StartDate" placeholder="Start" />
+                    <input name="StartDateTr" value="@item.StartDateTr" placeholder="Start TR" />
+                    <input name="EndDate" value="@item.EndDate" placeholder="End" />
+                    <input name="EndDateTr" value="@item.EndDateTr" placeholder="End TR" />
+                </div>
+                <textarea name="Description" placeholder="Description">@item.Description</textarea>
+                <textarea name="DescriptionTr" placeholder="Description TR">@item.DescriptionTr</textarea>
+                <div class="item-actions">
+                    <button type="submit" data-i18n="button.save">Save</button>
+                    <button class="delete-button" type="submit" formaction="@Url.Action("DeleteEducation")" name="id" value="@item.Id" data-i18n="button.delete">Delete</button>
+                </div>
+            </form>
+        }
+        <form asp-action="AddEducation" method="post" class="admin-form">
+            @Html.AntiForgeryToken()
+            <input name="School" placeholder="School" />
+            <input name="SchoolTr" placeholder="School TR" />
+            <input name="Degree" placeholder="Degree" />
+            <input name="DegreeTr" placeholder="Degree TR" />
+            <div class="form-row">
+                <input name="StartDate" placeholder="Start" />
+                <input name="StartDateTr" placeholder="Start TR" />
+                <input name="EndDate" placeholder="End" />
+                <input name="EndDateTr" placeholder="End TR" />
+            </div>
+            <textarea name="Description" placeholder="Description"></textarea>
+            <textarea name="DescriptionTr" placeholder="Description TR"></textarea>
+            <button type="submit" data-i18n="admin.addEducation">Add education</button>
+        </form>
+    </section>
+
+    <section class="admin-section">
+        <h2 data-i18n="section.skills">Skills</h2>
+        <div class="admin-skill-list">
+            @foreach (var item in Model.Skills)
+            {
+                <form asp-action="UpdateSkill" method="post" class="skill-edit">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="Id" value="@item.Id" />
+                    <div class="skill-fields">
+                        <input name="Name" value="@item.Name" placeholder="Skill" />
+                        <input name="NameTr" value="@item.NameTr" placeholder="Skill TR" />
+                    </div>
+                    <div class="skill-actions">
+                        <button type="submit" data-i18n="button.save">Save</button>
+                        <button class="skill-delete" type="submit" formaction="@Url.Action("DeleteSkill")" name="id" value="@item.Id" data-i18n="button.delete">Delete</button>
+                    </div>
+                </form>
+            }
+        </div>
+        <form asp-action="AddSkill" method="post" class="skill-edit">
+            @Html.AntiForgeryToken()
+            <div class="skill-fields">
+                <input name="Name" placeholder="Skill" />
+                <input name="NameTr" placeholder="Skill TR" />
+            </div>
+            <div class="skill-actions">
+                <button type="submit" data-i18n="admin.addSkill">Add skill</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="admin-section wide">
+        <h2 data-i18n="section.certifications">Certifications</h2>
+        @foreach (var item in Model.Certifications)
+        {
+            <form asp-action="UpdateCertification" method="post" class="admin-form editable-item">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="Id" value="@item.Id" />
+                <div class="form-row">
+                    <input name="Name" value="@item.Name" placeholder="Certification name" />
+                    <input name="NameTr" value="@item.NameTr" placeholder="Certification name TR" />
+                    <input name="Issuer" value="@item.Issuer" placeholder="Issuer" />
+                    <input name="IssuerTr" value="@item.IssuerTr" placeholder="Issuer TR" />
+                    <input name="IssueDate" value="@item.IssueDate" placeholder="Issue date" />
+                    <input name="IssueDateTr" value="@item.IssueDateTr" placeholder="Issue date TR" />
+                </div>
+                <input name="CredentialUrl" value="@item.CredentialUrl" placeholder="Credential URL" />
+                <textarea name="Description" placeholder="Description">@item.Description</textarea>
+                <textarea name="DescriptionTr" placeholder="Description TR">@item.DescriptionTr</textarea>
+                <div class="item-actions">
+                    <button type="submit" data-i18n="button.save">Save</button>
+                    <button class="delete-button" type="submit" formaction="@Url.Action("DeleteCertification")" name="id" value="@item.Id" data-i18n="button.delete">Delete</button>
+                </div>
+            </form>
+        }
+        <form asp-action="AddCertification" method="post" class="admin-form">
+            @Html.AntiForgeryToken()
+            <div class="form-row">
+                <input name="Name" placeholder="Certification name" />
+                <input name="NameTr" placeholder="Certification name TR" />
+                <input name="Issuer" placeholder="Issuer" />
+                <input name="IssuerTr" placeholder="Issuer TR" />
+                <input name="IssueDate" placeholder="Issue date" />
+                <input name="IssueDateTr" placeholder="Issue date TR" />
+            </div>
+            <input name="CredentialUrl" placeholder="Credential URL" />
+            <textarea name="Description" placeholder="Description"></textarea>
+            <textarea name="DescriptionTr" placeholder="Description TR"></textarea>
+            <button type="submit" data-i18n="admin.addCertification">Add certification</button>
+        </form>
+    </section>
+</div>

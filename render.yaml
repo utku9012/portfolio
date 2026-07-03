@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: portfolio
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: Admin__Password
+        sync: false
+      - key: ConnectionStrings__DefaultConnection
+        sync: false
