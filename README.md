@@ -2,6 +2,8 @@
 
 ASP.NET Core MVC portfolio website backed by PostgreSQL. It includes public sections for about, experiences, projects, education, skills, and certifications, plus a password-protected admin panel.
 
+The production Docker image targets .NET 8 LTS for stable free-host deployment.
+
 ## Local Development
 
 1. Create a PostgreSQL database named `portfolio_db`.

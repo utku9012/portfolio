@@ -20,3 +20,5 @@ wwwroot/uploads/*
 *.log
 *.tmp
 *.temp
+.appdata/
+.nuget-scratch/
