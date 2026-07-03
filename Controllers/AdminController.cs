@@ -503,16 +503,27 @@ public class AdminController : Controller
         var folder = $"portfolio/{folderName}";
         var resourceType = isImage ? "image" : "raw";
 
-        var signaturePayload = $"folder={folder}&timestamp={timestamp}{settings.ApiSecret}";
-        var signature = Convert.ToHexString(SHA1.HashData(Encoding.UTF8.GetBytes(signaturePayload))).ToLowerInvariant();
+        using var content = new MultipartFormDataContent();
 
-        using var content = new MultipartFormDataContent
+        if (!string.IsNullOrWhiteSpace(settings.UploadPreset))
         {
-            { new StringContent(settings.ApiKey), "api_key" },
-            { new StringContent(timestamp), "timestamp" },
-            { new StringContent(folder), "folder" },
-            { new StringContent(signature), "signature" }
-        };
+            content.Add(new StringContent(settings.UploadPreset), "upload_preset");
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(settings.ApiKey) || string.IsNullOrWhiteSpace(settings.ApiSecret))
+            {
+                throw new InvalidOperationException("Cloudinary API key and secret are missing.");
+            }
+
+            var signaturePayload = $"folder={folder}&timestamp={timestamp}{settings.ApiSecret}";
+            var signature = Convert.ToHexString(SHA1.HashData(Encoding.UTF8.GetBytes(signaturePayload))).ToLowerInvariant();
+
+            content.Add(new StringContent(settings.ApiKey), "api_key");
+            content.Add(new StringContent(timestamp), "timestamp");
+            content.Add(new StringContent(folder), "folder");
+            content.Add(new StringContent(signature), "signature");
+        }
 
         await using var stream = file.OpenReadStream();
         using var fileContent = new StreamContent(stream);
@@ -545,12 +556,14 @@ public class AdminController : Controller
         var cloudName = _configuration["Cloudinary:CloudName"];
         var apiKey = _configuration["Cloudinary:ApiKey"];
         var apiSecret = _configuration["Cloudinary:ApiSecret"];
+        var uploadPreset = _configuration["Cloudinary:UploadPreset"]
+            ?? _configuration["CLOUDINARY_UPLOAD_PRESET"];
 
         if (!string.IsNullOrWhiteSpace(cloudName)
-            && !string.IsNullOrWhiteSpace(apiKey)
-            && !string.IsNullOrWhiteSpace(apiSecret))
+            && (!string.IsNullOrWhiteSpace(uploadPreset)
+                || (!string.IsNullOrWhiteSpace(apiKey) && !string.IsNullOrWhiteSpace(apiSecret))))
         {
-            return new CloudinarySettings(cloudName, apiKey, apiSecret);
+            return new CloudinarySettings(cloudName, apiKey, apiSecret, uploadPreset);
         }
 
         var cloudinaryUrl = _configuration["CLOUDINARY_URL"];
@@ -571,7 +584,8 @@ public class AdminController : Controller
         return new CloudinarySettings(
             uri.Host,
             Uri.UnescapeDataString(credentials[0]),
-            Uri.UnescapeDataString(credentials[1]));
+            Uri.UnescapeDataString(credentials[1]),
+            uploadPreset);
     }
 
     private static string GetCloudinaryErrorMessage(string responseText)
@@ -594,5 +608,9 @@ public class AdminController : Controller
         return "Please check your Cloudinary settings.";
     }
 
-    private sealed record CloudinarySettings(string CloudName, string ApiKey, string ApiSecret);
+    private sealed record CloudinarySettings(
+        string CloudName,
+        string? ApiKey,
+        string? ApiSecret,
+        string? UploadPreset);
 }
