@@ -2,7 +2,7 @@
 
 .NET Core MVC portfolio website backed by PostgreSQL. Includes sections for about, experiences, projects, education, skills, and certifications, plus a password-protected admin panel.
 
-## Local Developmen
+## Local Development
 
 1. Create a PostgreSQL database.
 2. Confirm local values in `appsettings.Development.json`.
