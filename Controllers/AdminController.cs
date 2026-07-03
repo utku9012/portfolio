@@ -1,3 +1,6 @@
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -47,15 +50,18 @@ public class AdminController : Controller
     private readonly IAdminContentService _adminContentService;
     private readonly IConfiguration _configuration;
     private readonly IWebHostEnvironment _environment;
+    private readonly IHttpClientFactory _httpClientFactory;
 
     public AdminController(
         IAdminContentService adminContentService,
         IConfiguration configuration,
-        IWebHostEnvironment environment)
+        IWebHostEnvironment environment,
+        IHttpClientFactory httpClientFactory)
     {
         _adminContentService = adminContentService;
         _configuration = configuration;
         _environment = environment;
+        _httpClientFactory = httpClientFactory;
     }
 
     [HttpGet]
@@ -463,6 +469,14 @@ public class AdminController : Controller
             throw new InvalidOperationException($"{label} content type is not allowed.");
         }
 
+        if (IsCloudinaryConfigured())
+        {
+            var isImage = allowedContentTypes.Any(contentType =>
+                contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase));
+
+            return await UploadToCloudinaryAsync(file, folderName, extension, isImage);
+        }
+
         var uploadRoot = Path.Combine(_environment.WebRootPath, "uploads", folderName);
         Directory.CreateDirectory(uploadRoot);
 
@@ -473,5 +487,60 @@ public class AdminController : Controller
         await file.CopyToAsync(stream);
 
         return $"/uploads/{folderName}/{fileName}";
+    }
+
+    private bool IsCloudinaryConfigured() =>
+        !string.IsNullOrWhiteSpace(_configuration["Cloudinary:CloudName"])
+        && !string.IsNullOrWhiteSpace(_configuration["Cloudinary:ApiKey"])
+        && !string.IsNullOrWhiteSpace(_configuration["Cloudinary:ApiSecret"]);
+
+    private async Task<string> UploadToCloudinaryAsync(
+        IFormFile file,
+        string folderName,
+        string extension,
+        bool isImage)
+    {
+        var cloudName = _configuration["Cloudinary:CloudName"]!;
+        var apiKey = _configuration["Cloudinary:ApiKey"]!;
+        var apiSecret = _configuration["Cloudinary:ApiSecret"]!;
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
+        var folder = $"portfolio/{folderName}";
+        var resourceType = isImage ? "image" : "raw";
+
+        var signaturePayload = $"folder={folder}&timestamp={timestamp}{apiSecret}";
+        var signature = Convert.ToHexString(SHA1.HashData(Encoding.UTF8.GetBytes(signaturePayload))).ToLowerInvariant();
+
+        using var content = new MultipartFormDataContent
+        {
+            { new StringContent(apiKey), "api_key" },
+            { new StringContent(timestamp), "timestamp" },
+            { new StringContent(folder), "folder" },
+            { new StringContent(signature), "signature" }
+        };
+
+        await using var stream = file.OpenReadStream();
+        using var fileContent = new StreamContent(stream);
+        fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
+        content.Add(fileContent, "file", $"{Guid.NewGuid():N}{extension}");
+
+        var client = _httpClientFactory.CreateClient();
+        var response = await client.PostAsync(
+            $"https://api.cloudinary.com/v1_1/{cloudName}/{resourceType}/upload",
+            content);
+
+        var responseText = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException("Upload to Cloudinary failed. Please check your Cloudinary settings.");
+        }
+
+        using var payload = JsonDocument.Parse(responseText);
+        if (payload.RootElement.TryGetProperty("secure_url", out var secureUrl)
+            && !string.IsNullOrWhiteSpace(secureUrl.GetString()))
+        {
+            return secureUrl.GetString()!;
+        }
+
+        throw new InvalidOperationException("Cloudinary did not return an uploaded file URL.");
     }
 }

@@ -12,3 +12,9 @@ services:
         sync: false
       - key: ConnectionStrings__DefaultConnection
         sync: false
+      - key: Cloudinary__CloudName
+        sync: false
+      - key: Cloudinary__ApiKey
+        sync: false
+      - key: Cloudinary__ApiSecret
+        sync: false
