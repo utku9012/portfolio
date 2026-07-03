@@ -489,10 +489,7 @@ public class AdminController : Controller
         return $"/uploads/{folderName}/{fileName}";
     }
 
-    private bool IsCloudinaryConfigured() =>
-        !string.IsNullOrWhiteSpace(_configuration["Cloudinary:CloudName"])
-        && !string.IsNullOrWhiteSpace(_configuration["Cloudinary:ApiKey"])
-        && !string.IsNullOrWhiteSpace(_configuration["Cloudinary:ApiSecret"]);
+    private bool IsCloudinaryConfigured() => GetCloudinarySettings() is not null;
 
     private async Task<string> UploadToCloudinaryAsync(
         IFormFile file,
@@ -500,19 +497,18 @@ public class AdminController : Controller
         string extension,
         bool isImage)
     {
-        var cloudName = _configuration["Cloudinary:CloudName"]!;
-        var apiKey = _configuration["Cloudinary:ApiKey"]!;
-        var apiSecret = _configuration["Cloudinary:ApiSecret"]!;
+        var settings = GetCloudinarySettings()
+            ?? throw new InvalidOperationException("Cloudinary settings are missing.");
         var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
         var folder = $"portfolio/{folderName}";
         var resourceType = isImage ? "image" : "raw";
 
-        var signaturePayload = $"folder={folder}&timestamp={timestamp}{apiSecret}";
+        var signaturePayload = $"folder={folder}&timestamp={timestamp}{settings.ApiSecret}";
         var signature = Convert.ToHexString(SHA1.HashData(Encoding.UTF8.GetBytes(signaturePayload))).ToLowerInvariant();
 
         using var content = new MultipartFormDataContent
         {
-            { new StringContent(apiKey), "api_key" },
+            { new StringContent(settings.ApiKey), "api_key" },
             { new StringContent(timestamp), "timestamp" },
             { new StringContent(folder), "folder" },
             { new StringContent(signature), "signature" }
@@ -525,13 +521,13 @@ public class AdminController : Controller
 
         var client = _httpClientFactory.CreateClient();
         var response = await client.PostAsync(
-            $"https://api.cloudinary.com/v1_1/{cloudName}/{resourceType}/upload",
+            $"https://api.cloudinary.com/v1_1/{settings.CloudName}/{resourceType}/upload",
             content);
 
         var responseText = await response.Content.ReadAsStringAsync();
         if (!response.IsSuccessStatusCode)
         {
-            throw new InvalidOperationException("Upload to Cloudinary failed. Please check your Cloudinary settings.");
+            throw new InvalidOperationException($"Upload to Cloudinary failed. {GetCloudinaryErrorMessage(responseText)}");
         }
 
         using var payload = JsonDocument.Parse(responseText);
@@ -543,4 +539,60 @@ public class AdminController : Controller
 
         throw new InvalidOperationException("Cloudinary did not return an uploaded file URL.");
     }
+
+    private CloudinarySettings? GetCloudinarySettings()
+    {
+        var cloudName = _configuration["Cloudinary:CloudName"];
+        var apiKey = _configuration["Cloudinary:ApiKey"];
+        var apiSecret = _configuration["Cloudinary:ApiSecret"];
+
+        if (!string.IsNullOrWhiteSpace(cloudName)
+            && !string.IsNullOrWhiteSpace(apiKey)
+            && !string.IsNullOrWhiteSpace(apiSecret))
+        {
+            return new CloudinarySettings(cloudName, apiKey, apiSecret);
+        }
+
+        var cloudinaryUrl = _configuration["CLOUDINARY_URL"];
+        if (string.IsNullOrWhiteSpace(cloudinaryUrl)
+            || !Uri.TryCreate(cloudinaryUrl, UriKind.Absolute, out var uri)
+            || !uri.Scheme.Equals("cloudinary", StringComparison.OrdinalIgnoreCase)
+            || string.IsNullOrWhiteSpace(uri.Host))
+        {
+            return null;
+        }
+
+        var credentials = uri.UserInfo.Split(':', 2);
+        if (credentials.Length != 2)
+        {
+            return null;
+        }
+
+        return new CloudinarySettings(
+            uri.Host,
+            Uri.UnescapeDataString(credentials[0]),
+            Uri.UnescapeDataString(credentials[1]));
+    }
+
+    private static string GetCloudinaryErrorMessage(string responseText)
+    {
+        try
+        {
+            using var payload = JsonDocument.Parse(responseText);
+            if (payload.RootElement.TryGetProperty("error", out var error)
+                && error.TryGetProperty("message", out var message)
+                && !string.IsNullOrWhiteSpace(message.GetString()))
+            {
+                return message.GetString()!;
+            }
+        }
+        catch (JsonException)
+        {
+            // Fall back to a generic message below if Cloudinary returns non-JSON.
+        }
+
+        return "Please check your Cloudinary settings.";
+    }
+
+    private sealed record CloudinarySettings(string CloudName, string ApiKey, string ApiSecret);
 }
