@@ -18,8 +18,6 @@ dotnet run --urls http://localhost:5130
 
 - Public portfolio: `http://localhost:5130`
 - Admin panel: `http://localhost:5130/Admin`
-- Robots: `http://localhost:5130/robots.txt`
-- Sitemap: `http://localhost:5130/sitemap.xml`
 
 ## Architecture
 
