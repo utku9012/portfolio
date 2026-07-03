@@ -2,6 +2,8 @@
 
 .NET Core MVC portfolio website backed by PostgreSQL. Includes sections for about, experiences, projects, education, skills, and certifications, plus a password-protected admin panel.
 
+Used Neon to host my PostgreSQL database, used Render to host and run my portfolio website and used Cloudinary for storing the uploaded images to avoid removal of content when redeploying on Render. 
+
 ## Local Development
 
 1. Create a PostgreSQL database.
