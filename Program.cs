@@ -2,13 +2,15 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.HttpOverrides;
 using System.Threading.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using portfolio.Data;
 using portfolio.Repositories;
 using portfolio.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var connectionString = NormalizePostgresConnectionString(
+    builder.Configuration.GetConnectionString("DefaultConnection"));
 var adminPassword = builder.Configuration["Admin:Password"];
 
 if (!builder.Environment.IsDevelopment())
@@ -113,3 +115,60 @@ app.MapControllerRoute(
 await DbInitializer.InitializeAsync(app.Services);
 
 app.Run();
+
+static string? NormalizePostgresConnectionString(string? connectionString)
+{
+    if (string.IsNullOrWhiteSpace(connectionString)
+        || (!connectionString.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase)
+            && !connectionString.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase)))
+    {
+        return connectionString;
+    }
+
+    var databaseUri = new Uri(connectionString);
+    var userInfo = databaseUri.UserInfo.Split(':', 2);
+    var builder = new NpgsqlConnectionStringBuilder
+    {
+        Host = databaseUri.Host,
+        Port = databaseUri.Port > 0 ? databaseUri.Port : 5432,
+        Database = Uri.UnescapeDataString(databaseUri.AbsolutePath.TrimStart('/')),
+        Username = userInfo.Length > 0 ? Uri.UnescapeDataString(userInfo[0]) : string.Empty,
+        Password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : string.Empty
+    };
+
+    foreach (var (key, value) in ParseQueryString(databaseUri.Query))
+    {
+        if (key.Equals("sslmode", StringComparison.OrdinalIgnoreCase)
+            && Enum.TryParse<SslMode>(value, ignoreCase: true, out var sslMode))
+        {
+            builder.SslMode = sslMode;
+        }
+        else if (key.Equals("channel_binding", StringComparison.OrdinalIgnoreCase)
+                 || key.Equals("channelbinding", StringComparison.OrdinalIgnoreCase))
+        {
+            builder["Channel Binding"] = value;
+        }
+    }
+
+    return builder.ConnectionString;
+}
+
+static IEnumerable<(string Key, string Value)> ParseQueryString(string query)
+{
+    if (string.IsNullOrWhiteSpace(query))
+    {
+        yield break;
+    }
+
+    foreach (var pair in query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+    {
+        var parts = pair.Split('=', 2);
+        var key = Uri.UnescapeDataString(parts[0].Replace("+", " "));
+        var value = parts.Length > 1 ? Uri.UnescapeDataString(parts[1].Replace("+", " ")) : string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(key))
+        {
+            yield return (key, value);
+        }
+    }
+}

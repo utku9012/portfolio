@@ -26,6 +26,8 @@ ConnectionStrings__DefaultConnection=Host=YOUR_HOST;Port=5432;Database=YOUR_DB;U
 Admin__Password=YOUR_STRONG_ADMIN_PASSWORD
 ```
 
+`ConnectionStrings__DefaultConnection` may also be a `postgres://` or `postgresql://` URL from Neon/Render; the app converts it to Npgsql format at startup.
+
 The app refuses to start in production if the connection string is empty/local or if the admin password is missing/`1234`.
 
 ## Deployment
@@ -47,7 +49,13 @@ The app also calls `Database.MigrateAsync()` on startup, so pending migrations a
 ### Free Render + Neon Deployment
 
 1. Create a free PostgreSQL database on Neon.
-2. Copy the Neon connection string and convert it to Npgsql format if needed:
+2. Copy the Neon connection string. You can use the URL format directly:
+
+```txt
+postgresql://YOUR_USER:YOUR_PASSWORD@YOUR_HOST/YOUR_DB?sslmode=require
+```
+
+You can also use Npgsql format:
 
 ```txt
 Host=YOUR_HOST;Port=5432;Database=YOUR_DB;Username=YOUR_USER;Password=YOUR_PASSWORD;SSL Mode=Require;Trust Server Certificate=true
