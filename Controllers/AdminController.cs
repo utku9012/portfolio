@@ -511,6 +511,12 @@ public class AdminController : Controller
         }
         else
         {
+            if (settings.RequiresUploadPreset)
+            {
+                throw new InvalidOperationException(
+                    "Cloudinary upload preset is missing. Set Cloudinary__UploadPreset in Render, then redeploy.");
+            }
+
             if (string.IsNullOrWhiteSpace(settings.ApiKey) || string.IsNullOrWhiteSpace(settings.ApiSecret))
             {
                 throw new InvalidOperationException("Cloudinary API key and secret are missing.");
@@ -556,14 +562,20 @@ public class AdminController : Controller
         var cloudName = _configuration["Cloudinary:CloudName"];
         var apiKey = _configuration["Cloudinary:ApiKey"];
         var apiSecret = _configuration["Cloudinary:ApiSecret"];
-        var uploadPreset = _configuration["Cloudinary:UploadPreset"]
-            ?? _configuration["CLOUDINARY_UPLOAD_PRESET"];
+        var uploadPreset = FirstConfiguredValue(
+            _configuration["Cloudinary:UploadPreset"],
+            _configuration["Cloudinary:UnsignedUploadPreset"],
+            _configuration["CLOUDINARY_UPLOAD_PRESET"],
+            _configuration["UPLOAD_PRESET"]);
 
-        if (!string.IsNullOrWhiteSpace(cloudName)
-            && (!string.IsNullOrWhiteSpace(uploadPreset)
-                || (!string.IsNullOrWhiteSpace(apiKey) && !string.IsNullOrWhiteSpace(apiSecret))))
+        if (!string.IsNullOrWhiteSpace(cloudName))
         {
-            return new CloudinarySettings(cloudName, apiKey, apiSecret, uploadPreset);
+            return new CloudinarySettings(
+                cloudName.Trim(),
+                apiKey?.Trim(),
+                apiSecret?.Trim(),
+                uploadPreset?.Trim(),
+                RequiresUploadPreset: string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(apiSecret));
         }
 
         var cloudinaryUrl = _configuration["CLOUDINARY_URL"];
@@ -585,8 +597,12 @@ public class AdminController : Controller
             uri.Host,
             Uri.UnescapeDataString(credentials[0]),
             Uri.UnescapeDataString(credentials[1]),
-            uploadPreset);
+            uploadPreset?.Trim(),
+            RequiresUploadPreset: false);
     }
+
+    private static string? FirstConfiguredValue(params string?[] values) =>
+        values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
 
     private static string GetCloudinaryErrorMessage(string responseText)
     {
@@ -612,5 +628,6 @@ public class AdminController : Controller
         string CloudName,
         string? ApiKey,
         string? ApiSecret,
-        string? UploadPreset);
+        string? UploadPreset,
+        bool RequiresUploadPreset);
 }
