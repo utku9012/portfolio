@@ -10,5 +10,16 @@ public static class DbInitializer
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
         await context.Database.MigrateAsync();
+        await context.Database.ExecuteSqlRawAsync(
+            """
+            CREATE TABLE IF NOT EXISTS "UploadedAssets" (
+                "Id" uuid NOT NULL,
+                "FileName" character varying(255) NOT NULL,
+                "ContentType" character varying(120) NOT NULL,
+                "Data" bytea NOT NULL,
+                "CreatedAtUtc" timestamp with time zone NOT NULL,
+                CONSTRAINT "PK_UploadedAssets" PRIMARY KEY ("Id")
+            );
+            """);
     }
 }
