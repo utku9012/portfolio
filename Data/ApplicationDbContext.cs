@@ -16,6 +16,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Education> Educations => Set<Education>();
     public DbSet<Skill> Skills => Set<Skill>();
     public DbSet<Certification> Certifications => Set<Certification>();
+    public DbSet<UploadedAsset> UploadedAssets => Set<UploadedAsset>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -45,5 +46,8 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<Certification>().Property(certification => certification.Issuer).HasMaxLength(160);
         modelBuilder.Entity<Certification>().Property(certification => certification.IssuerTr).HasMaxLength(160);
         modelBuilder.Entity<Certification>().Property(certification => certification.CredentialUrl).HasMaxLength(500);
+
+        modelBuilder.Entity<UploadedAsset>().Property(asset => asset.FileName).HasMaxLength(255);
+        modelBuilder.Entity<UploadedAsset>().Property(asset => asset.ContentType).HasMaxLength(120);
     }
 }

@@ -1,12 +1,10 @@
-using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using portfolio.Data;
 using portfolio.Models.Entities;
 using portfolio.Models.ViewModels;
 using portfolio.Services;
@@ -48,20 +46,17 @@ public class AdminController : Controller
     private const long MaxCvFileSize = 10 * 1024 * 1024;
 
     private readonly IAdminContentService _adminContentService;
+    private readonly ApplicationDbContext _context;
     private readonly IConfiguration _configuration;
-    private readonly IWebHostEnvironment _environment;
-    private readonly IHttpClientFactory _httpClientFactory;
 
     public AdminController(
         IAdminContentService adminContentService,
-        IConfiguration configuration,
-        IWebHostEnvironment environment,
-        IHttpClientFactory httpClientFactory)
+        ApplicationDbContext context,
+        IConfiguration configuration)
     {
         _adminContentService = adminContentService;
+        _context = context;
         _configuration = configuration;
-        _environment = environment;
-        _httpClientFactory = httpClientFactory;
     }
 
     [HttpGet]
@@ -469,165 +464,20 @@ public class AdminController : Controller
             throw new InvalidOperationException($"{label} content type is not allowed.");
         }
 
-        if (IsCloudinaryConfigured())
-        {
-            var isImage = allowedContentTypes.Any(contentType =>
-                contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase));
-
-            return await UploadToCloudinaryAsync(file, folderName, extension, isImage);
-        }
-
-        var uploadRoot = Path.Combine(_environment.WebRootPath, "uploads", folderName);
-        Directory.CreateDirectory(uploadRoot);
-
-        var fileName = $"{Guid.NewGuid():N}{extension}";
-        var filePath = Path.Combine(uploadRoot, fileName);
-
-        await using var stream = System.IO.File.Create(filePath);
-        await file.CopyToAsync(stream);
-
-        return $"/uploads/{folderName}/{fileName}";
-    }
-
-    private bool IsCloudinaryConfigured() => GetCloudinarySettings() is not null;
-
-    private async Task<string> UploadToCloudinaryAsync(
-        IFormFile file,
-        string folderName,
-        string extension,
-        bool isImage)
-    {
-        var settings = GetCloudinarySettings()
-            ?? throw new InvalidOperationException("Cloudinary settings are missing.");
-        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
-        var folder = $"portfolio/{folderName}";
-        var resourceType = isImage ? "image" : "raw";
-
-        using var content = new MultipartFormDataContent();
-
-        if (!string.IsNullOrWhiteSpace(settings.UploadPreset))
-        {
-            content.Add(new StringContent(settings.UploadPreset), "upload_preset");
-        }
-        else
-        {
-            if (settings.RequiresUploadPreset)
-            {
-                throw new InvalidOperationException(
-                    "Cloudinary upload preset is missing. Set Cloudinary__UploadPreset in Render, then redeploy.");
-            }
-
-            if (string.IsNullOrWhiteSpace(settings.ApiKey) || string.IsNullOrWhiteSpace(settings.ApiSecret))
-            {
-                throw new InvalidOperationException("Cloudinary API key and secret are missing.");
-            }
-
-            var signaturePayload = $"folder={folder}&timestamp={timestamp}{settings.ApiSecret}";
-            var signature = Convert.ToHexString(SHA1.HashData(Encoding.UTF8.GetBytes(signaturePayload))).ToLowerInvariant();
-
-            content.Add(new StringContent(settings.ApiKey), "api_key");
-            content.Add(new StringContent(timestamp), "timestamp");
-            content.Add(new StringContent(folder), "folder");
-            content.Add(new StringContent(signature), "signature");
-        }
-
         await using var stream = file.OpenReadStream();
-        using var fileContent = new StreamContent(stream);
-        fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(file.ContentType);
-        content.Add(fileContent, "file", $"{Guid.NewGuid():N}{extension}");
+        using var memory = new MemoryStream();
+        await stream.CopyToAsync(memory);
 
-        var client = _httpClientFactory.CreateClient();
-        var response = await client.PostAsync(
-            $"https://api.cloudinary.com/v1_1/{settings.CloudName}/{resourceType}/upload",
-            content);
-
-        var responseText = await response.Content.ReadAsStringAsync();
-        if (!response.IsSuccessStatusCode)
+        var asset = new UploadedAsset
         {
-            throw new InvalidOperationException($"Upload to Cloudinary failed. {GetCloudinaryErrorMessage(responseText)}");
-        }
+            FileName = $"{Path.GetFileNameWithoutExtension(file.FileName)}{extension}",
+            ContentType = file.ContentType,
+            Data = memory.ToArray()
+        };
 
-        using var payload = JsonDocument.Parse(responseText);
-        if (payload.RootElement.TryGetProperty("secure_url", out var secureUrl)
-            && !string.IsNullOrWhiteSpace(secureUrl.GetString()))
-        {
-            return secureUrl.GetString()!;
-        }
+        _context.UploadedAssets.Add(asset);
+        await _context.SaveChangesAsync();
 
-        throw new InvalidOperationException("Cloudinary did not return an uploaded file URL.");
+        return Url.Action("Get", "Files", new { id = asset.Id }) ?? $"/files/{asset.Id}";
     }
-
-    private CloudinarySettings? GetCloudinarySettings()
-    {
-        var cloudName = _configuration["Cloudinary:CloudName"];
-        var apiKey = _configuration["Cloudinary:ApiKey"];
-        var apiSecret = _configuration["Cloudinary:ApiSecret"];
-        var uploadPreset = FirstConfiguredValue(
-            _configuration["Cloudinary:UploadPreset"],
-            _configuration["Cloudinary:UnsignedUploadPreset"],
-            _configuration["CLOUDINARY_UPLOAD_PRESET"],
-            _configuration["UPLOAD_PRESET"]);
-
-        if (!string.IsNullOrWhiteSpace(cloudName))
-        {
-            return new CloudinarySettings(
-                cloudName.Trim(),
-                apiKey?.Trim(),
-                apiSecret?.Trim(),
-                uploadPreset?.Trim(),
-                RequiresUploadPreset: string.IsNullOrWhiteSpace(apiKey) || string.IsNullOrWhiteSpace(apiSecret));
-        }
-
-        var cloudinaryUrl = _configuration["CLOUDINARY_URL"];
-        if (string.IsNullOrWhiteSpace(cloudinaryUrl)
-            || !Uri.TryCreate(cloudinaryUrl, UriKind.Absolute, out var uri)
-            || !uri.Scheme.Equals("cloudinary", StringComparison.OrdinalIgnoreCase)
-            || string.IsNullOrWhiteSpace(uri.Host))
-        {
-            return null;
-        }
-
-        var credentials = uri.UserInfo.Split(':', 2);
-        if (credentials.Length != 2)
-        {
-            return null;
-        }
-
-        return new CloudinarySettings(
-            uri.Host,
-            Uri.UnescapeDataString(credentials[0]),
-            Uri.UnescapeDataString(credentials[1]),
-            uploadPreset?.Trim(),
-            RequiresUploadPreset: false);
-    }
-
-    private static string? FirstConfiguredValue(params string?[] values) =>
-        values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value));
-
-    private static string GetCloudinaryErrorMessage(string responseText)
-    {
-        try
-        {
-            using var payload = JsonDocument.Parse(responseText);
-            if (payload.RootElement.TryGetProperty("error", out var error)
-                && error.TryGetProperty("message", out var message)
-                && !string.IsNullOrWhiteSpace(message.GetString()))
-            {
-                return message.GetString()!;
-            }
-        }
-        catch (JsonException)
-        {
-            // Fall back to a generic message below if Cloudinary returns non-JSON.
-        }
-
-        return "Please check your Cloudinary settings.";
-    }
-
-    private sealed record CloudinarySettings(
-        string CloudName,
-        string? ApiKey,
-        string? ApiSecret,
-        string? UploadPreset,
-        bool RequiresUploadPreset);
 }

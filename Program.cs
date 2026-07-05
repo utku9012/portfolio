@@ -31,7 +31,6 @@ if (!builder.Environment.IsDevelopment())
 }
 
 builder.Services.AddControllersWithViews();
-builder.Services.AddHttpClient();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
