@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 using portfolio.Data;
 using portfolio.Models.Entities;
 using portfolio.Models.ViewModels;
@@ -132,6 +133,10 @@ public class AdminController : Controller
             {
                 TempData["AdminError"] = ex.Message;
             }
+            catch (Exception ex)
+            {
+                TempData["AdminError"] = $"About section could not be saved. {ex.GetBaseException().Message}";
+            }
         }
         else
         {
@@ -210,6 +215,10 @@ public class AdminController : Controller
             {
                 TempData["AdminError"] = ex.Message;
             }
+            catch (Exception ex)
+            {
+                TempData["AdminError"] = $"Project could not be added. {ex.GetBaseException().Message}";
+            }
         }
         else
         {
@@ -251,6 +260,10 @@ public class AdminController : Controller
             catch (InvalidOperationException ex)
             {
                 TempData["AdminError"] = ex.Message;
+            }
+            catch (Exception ex)
+            {
+                TempData["AdminError"] = $"Project could not be saved. {ex.GetBaseException().Message}";
             }
         }
         else
@@ -476,7 +489,16 @@ public class AdminController : Controller
         };
 
         _context.UploadedAssets.Add(asset);
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            throw new InvalidOperationException(
+                $"File could not be saved to the database. {ex.GetBaseException().Message}",
+                ex);
+        }
 
         return Url.Action("Get", "Files", new { id = asset.Id }) ?? $"/files/{asset.Id}";
     }
