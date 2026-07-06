@@ -94,6 +94,10 @@ namespace portfolio.Migrations
                     b.Property<string>("EndDateTr")
                         .HasColumnType("text");
 
+                    b.Property<string>("Grade")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
                     b.Property<string>("School")
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)");

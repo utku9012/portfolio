@@ -38,6 +38,7 @@ public class ApplicationDbContext : DbContext
         modelBuilder.Entity<Education>().Property(education => education.School).HasMaxLength(160);
         modelBuilder.Entity<Education>().Property(education => education.SchoolTr).HasMaxLength(160);
         modelBuilder.Entity<Education>().Property(education => education.DegreeTr).HasMaxLength(200);
+        modelBuilder.Entity<Education>().Property(education => education.Grade).HasMaxLength(40);
         modelBuilder.Entity<Education>().Property(education => education.Description).IsRequired(false);
         modelBuilder.Entity<Skill>().Property(skill => skill.Name).HasMaxLength(100);
         modelBuilder.Entity<Skill>().Property(skill => skill.NameTr).HasMaxLength(100);

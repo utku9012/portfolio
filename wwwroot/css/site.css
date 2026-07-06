@@ -181,6 +181,12 @@ h3 {
   white-space: pre-line;
 }
 
+.education-grade {
+  color: #48525b;
+  font-weight: 800;
+  margin: 0.75rem 0 0;
+}
+
 .description-list {
   line-height: 1.55;
   list-style: none;
@@ -779,6 +785,7 @@ body[data-theme="dark"] .back-link {
 
 body[data-theme="dark"] .lead,
 body[data-theme="dark"] .contact-line,
+body[data-theme="dark"] .education-grade,
 body[data-theme="dark"] .subheading,
 body[data-theme="dark"] .eyebrow,
 body[data-theme="dark"] .tech,

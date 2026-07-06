@@ -21,5 +21,10 @@ public static class DbInitializer
                 CONSTRAINT "PK_UploadedAssets" PRIMARY KEY ("Id")
             );
             """);
+        await context.Database.ExecuteSqlRawAsync(
+            """
+            ALTER TABLE "Educations"
+            ADD COLUMN IF NOT EXISTS "Grade" character varying(40);
+            """);
     }
 }

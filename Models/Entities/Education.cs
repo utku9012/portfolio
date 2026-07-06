@@ -14,6 +14,8 @@ public class Education : IEntity
 
     public string? DegreeTr { get; set; }
 
+    public string? Grade { get; set; }
+
     [Display(Name = "Start date")]
     public string? StartDate { get; set; }
 
