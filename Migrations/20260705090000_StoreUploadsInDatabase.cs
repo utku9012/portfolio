@@ -10,26 +10,25 @@ namespace portfolio.Migrations
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateTable(
-                name: "UploadedAssets",
-                columns: table => new
-                {
-                    Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    FileName = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: false),
-                    ContentType = table.Column<string>(type: "character varying(120)", maxLength: 120, nullable: false),
-                    Data = table.Column<byte[]>(type: "bytea", nullable: false),
-                    CreatedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_UploadedAssets", x => x.Id);
-                });
+            migrationBuilder.Sql(
+                """
+                CREATE TABLE IF NOT EXISTS "UploadedAssets" (
+                    "Id" uuid NOT NULL,
+                    "FileName" character varying(255) NOT NULL,
+                    "ContentType" character varying(120) NOT NULL,
+                    "Data" bytea NOT NULL,
+                    "CreatedAtUtc" timestamp with time zone NOT NULL,
+                    CONSTRAINT "PK_UploadedAssets" PRIMARY KEY ("Id")
+                );
+                """);
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropTable(
-                name: "UploadedAssets");
+            migrationBuilder.Sql(
+                """
+                DROP TABLE IF EXISTS "UploadedAssets";
+                """);
         }
     }
 }

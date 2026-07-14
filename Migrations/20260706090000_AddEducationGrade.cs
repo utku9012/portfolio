@@ -9,19 +9,20 @@ namespace portfolio.Migrations
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "Grade",
-                table: "Educations",
-                type: "character varying(40)",
-                maxLength: 40,
-                nullable: true);
+            migrationBuilder.Sql(
+                """
+                ALTER TABLE "Educations"
+                ADD COLUMN IF NOT EXISTS "Grade" character varying(40);
+                """);
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "Grade",
-                table: "Educations");
+            migrationBuilder.Sql(
+                """
+                ALTER TABLE "Educations"
+                DROP COLUMN IF EXISTS "Grade";
+                """);
         }
     }
 }

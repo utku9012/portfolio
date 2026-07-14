@@ -14,7 +14,7 @@ public class Education : IEntity
 
     public string? DegreeTr { get; set; }
 
-    [Required, Display(Name = "GPA")]
+    [Display(Name = "GPA")]
     public string? Grade { get; set; }
 
     [Display(Name = "Graduation rank")]

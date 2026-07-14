@@ -293,6 +293,8 @@ public class AdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> AddEducation(Education education)
     {
+        ValidateEducationGrade(education);
+
         if (ModelState.IsValid)
         {
             await _adminContentService.AddEducationAsync(education);
@@ -321,6 +323,8 @@ public class AdminController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> UpdateEducation(Education education)
     {
+        ValidateEducationGrade(education);
+
         if (ModelState.IsValid)
         {
             await _adminContentService.UpdateEducationAsync(education);
@@ -332,6 +336,14 @@ public class AdminController : Controller
         }
 
         return RedirectToAction(nameof(Index));
+    }
+
+    private void ValidateEducationGrade(Education education)
+    {
+        if (string.IsNullOrWhiteSpace(education.Grade))
+        {
+            ModelState.AddModelError(nameof(Education.Grade), "GPA is required.");
+        }
     }
 
     [Authorize]
