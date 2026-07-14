@@ -98,6 +98,10 @@ namespace portfolio.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
 
+                    b.Property<string>("GraduationRank")
+                        .HasMaxLength(240)
+                        .HasColumnType("character varying(240)");
+
                     b.Property<string>("School")
                         .HasMaxLength(160)
                         .HasColumnType("character varying(160)");

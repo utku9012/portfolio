@@ -187,6 +187,12 @@ h3 {
   margin: 0.75rem 0 0;
 }
 
+.education-rank {
+  color: #667078;
+  font-weight: 700;
+  margin: 0.45rem 0 0;
+}
+
 .description-list {
   line-height: 1.55;
   list-style: none;
@@ -786,6 +792,7 @@ body[data-theme="dark"] .back-link {
 body[data-theme="dark"] .lead,
 body[data-theme="dark"] .contact-line,
 body[data-theme="dark"] .education-grade,
+body[data-theme="dark"] .education-rank,
 body[data-theme="dark"] .subheading,
 body[data-theme="dark"] .eyebrow,
 body[data-theme="dark"] .tech,
