@@ -20,6 +20,9 @@ public class Education : IEntity
     [Display(Name = "Graduation rank")]
     public string? GraduationRank { get; set; }
 
+    [Display(Name = "Graduation rank TR")]
+    public string? GraduationRankTr { get; set; }
+
     [Display(Name = "Start date")]
     public string? StartDate { get; set; }
 

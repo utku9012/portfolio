@@ -220,9 +220,13 @@
                             <span data-i18n="field.grade">GPA</span>: @education.Grade
                         </p>
                     }
-                    @if (!string.IsNullOrWhiteSpace(education.GraduationRank))
+                    @if (!string.IsNullOrWhiteSpace(education.GraduationRank)
+                         || !string.IsNullOrWhiteSpace(education.GraduationRankTr))
                     {
-                        <p class="education-rank">@education.GraduationRank</p>
+                        <p class="education-rank">
+                            <span data-localized="en">@education.GraduationRank</span>
+                            <span data-localized="tr">@Localized(education.GraduationRank, education.GraduationRankTr)</span>
+                        </p>
                     }
                     <p class="formatted-text">
                         <span data-localized="en">@education.Description</span>

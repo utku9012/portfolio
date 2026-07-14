@@ -31,5 +31,10 @@ public static class DbInitializer
             ALTER TABLE "Educations"
             ADD COLUMN IF NOT EXISTS "GraduationRank" character varying(240);
             """);
+        await context.Database.ExecuteSqlRawAsync(
+            """
+            ALTER TABLE "Educations"
+            ADD COLUMN IF NOT EXISTS "GraduationRankTr" character varying(240);
+            """);
     }
 }
