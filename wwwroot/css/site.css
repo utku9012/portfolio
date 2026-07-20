@@ -251,6 +251,11 @@ button,
   width: 3.25rem;
 }
 
+.cv-button-label {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
 .timeline-item {
   display: grid;
   gap: 1rem;
